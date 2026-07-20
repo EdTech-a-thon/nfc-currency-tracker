@@ -30,7 +30,7 @@ export function CardEncodingList({ cards }: { cards: CardLink[] }) {
   }
 
   return <div className="grid gap-3">
-    {cards.map((card) => <article className="panel grid gap-4 p-4 md:grid-cols-[110px_1fr_auto] md:items-center" key={card.id}>
+    {cards.map((card) => <article className="panel grid gap-4 p-4 sm:grid-cols-[110px_1fr] sm:items-center md:grid-cols-[110px_1fr_auto]" key={card.id}>
       <div>
         <p className="display text-3xl">Card #{card.label}</p>
         <p className="font-bold tracking-[.18em] text-[#e85d43]">{card.shortCode}</p>
@@ -40,7 +40,7 @@ export function CardEncodingList({ cards }: { cards: CardLink[] }) {
         <p className="mt-1 truncate text-sm text-slate-500">{card.url}</p>
         <p className="mt-1 text-xs text-slate-500">This URL always belongs to Card #{card.label}. Reassigning the card changes the student it opens.</p>
       </div>
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-1">
+      <div className="grid grid-cols-2 gap-2 sm:col-span-2 md:col-span-1 md:grid-cols-1">
         <button className={`btn ${copiedId === card.id ? "bg-green-700" : "btn-accent"}`} onClick={() => void copy(card)}>{copiedId === card.id ? "Copied!" : "Copy URL"}</button>
         <a className="btn btn-soft" href={card.url} target="_blank" rel="noreferrer">Test link</a>
       </div>
