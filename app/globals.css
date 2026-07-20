@@ -25,6 +25,4 @@ summary { min-height: 44px; align-content: center; }
 @media print {
   .no-print { display: none !important; }
   body { background: white; }
-  .print-grid { display: grid !important; grid-template-columns: repeat(2, 3.5in); gap: .15in; }
-  .print-tile { width: 3.5in; height: 2in; break-inside: avoid; box-shadow: none; border: 1px solid #bbb; }
 }

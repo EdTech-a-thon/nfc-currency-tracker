@@ -1,6 +1,6 @@
 # NFC Currency Tracker
 
-A self-hosted classroom reward economy for reusable NFC, QR, and short-code cards. Teachers award whole-number classroom currency, run a store, and keep an immutable transaction history. Students do not have accounts and cannot move credit.
+A self-hosted classroom reward economy for reusable NFC and short-code cards. Teachers award whole-number classroom currency, run a store, and keep an immutable transaction history. Students do not have accounts and cannot move credit.
 
 ## Local setup
 
@@ -40,10 +40,10 @@ Cards store only a URL. Names, assignments, balances, and history always stay in
 2. Open **Encoding sheet**. Match each printed card label to its permanent URL.
 3. On an iPhone, use any free NFC writer app to write the matching URL to each chip once.
 4. Test the card, then lock the tag after writing so its permanent identifier cannot be changed accidentally.
-5. Open **Print QR cards** and print matching QR/short-code labels. No student name appears because cards are reused.
+5. Label each physical card with its matching card number and short code. No student name is needed because cards are reused.
 6. Assign cards to students manually or with sequential auto-assign.
 
-Blank NTAG215 cards and re-encodable hotel keycards both work. Confirm that hotel cards are writable before buying a set. iPhones open the written URL through background NFC reading without an installed app. **iPads cannot tap NFC cards and should scan the printed QR code with the in-browser camera instead.** The four-character code remains a backup for damaged cards.
+Blank NTAG215 cards and re-encodable hotel keycards both work. Confirm that hotel cards are writable before buying a set. iPhones open the written URL through background NFC reading without an installed app. The four-character code remains a backup for damaged cards and for devices that cannot read NFC.
 
 Never change `CARD_BASE_URL` after chips have been written and locked. The path is deliberately short: `/c/<permanent-token>`.
 
@@ -65,6 +65,6 @@ docker compose up -d --build
 - Paste or CSV roster import, student editing/deactivation, bulk class transfer, and balance sorting.
 - Permanent card generation, encoding CSV, print sheets, assignment, reset, lost/retired state, and replacement.
 - Multi-student quick awards with optimistic balances, visible sync state, queued retry, and idempotency.
-- QR camera scanning, manual code lookup, teacher-aware iPhone card links, and roster fallback.
+- Manual short-code lookup, teacher-aware iPhone card links, and roster fallback.
 - Manual adjustment with required reason, compensating undo, full student history, store editing, stocked checkout, and CSV export.
 - Fast read-only student balance, activity, and affordability view.

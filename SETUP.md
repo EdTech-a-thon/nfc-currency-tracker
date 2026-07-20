@@ -85,6 +85,4 @@ docker compose up -d app
 
 **Certificate is not issued:** Confirm the A record resolves to this VM, ports 80 and 443 are open, no stale AAAA record points elsewhere, and `DOMAIN` exactly matches DNS. Run `docker compose logs caddy`.
 
-**Camera does not open:** The page must show a trusted `https://` address. Plain HTTP, a self-signed certificate, private browsing restrictions, or denied browser camera permission will prevent scanning. Re-enable camera permission in Safari settings and reload.
-
 **Database will not connect:** Run `docker compose ps` and `docker compose logs db app`. Check that `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD` match. Password punctuation with URL-reserved characters can break `DATABASE_URL`; use a long URL-safe password.

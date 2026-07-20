@@ -16,16 +16,13 @@
   "dependencies": {
     "@prisma/client": "6.11.1",
     "bcryptjs": "3.0.2",
-    "html5-qrcode": "2.3.8",
     "next": "15.5.20",
-    "qrcode": "1.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "zod": "3.25.76"
   },
   "devDependencies": {
     "@types/node": "22.16.4",
-    "@types/qrcode": "1.5.5",
     "@types/react": "19.1.8",
     "@types/react-dom": "19.1.6",
     "autoprefixer": "10.4.21",
