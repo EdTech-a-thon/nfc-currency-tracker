@@ -10,8 +10,9 @@ type Pending = { key: string; studentIds: string[]; amount: number; reason: stri
 const CACHE = "nfc-roster-cache";
 const QUEUE = "nfc-award-queue";
 const VIEW = "nfc-student-view";
+const QUICK_AMOUNTS = [1, 3, 5];
 
-export function OptimisticAward({ classroomId, students: initial, presets, symbol }: { classroomId: string; students: Student[]; presets: Preset[]; symbol: string }) {
+export function OptimisticAward({ classroomId, students: initial, symbol }: { classroomId: string; students: Student[]; presets: Preset[]; symbol: string }) {
   const [students, setStudents] = useState(initial);
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, setPending] = useState<Pending[]>([]);
@@ -55,17 +56,17 @@ export function OptimisticAward({ classroomId, students: initial, presets, symbo
     }
   }
 
-  function award(preset: Pick<Preset, "amount" | "label">) {
+  function award(awardAmount: number) {
     if (!selected.length) return setMessage("Choose at least one student first.");
-    const item: Pending = { key: crypto.randomUUID(), studentIds: selected, amount: preset.amount, reason: reason.trim() || preset.label, status: "syncing" };
-    setStudents((current) => current.map((student) => selected.includes(student.id) ? { ...student, balance: student.balance + preset.amount } : student));
+    const item: Pending = { key: crypto.randomUUID(), studentIds: selected, amount: awardAmount, reason: reason.trim(), status: "syncing" };
+    setStudents((current) => current.map((student) => selected.includes(student.id) ? { ...student, balance: student.balance + awardAmount } : student));
     setSelected([]); setReason(""); setMessage("Saving..."); void send(item);
   }
 
   function awardCustom() {
     const amount = Number(customAmount);
     if (!Number.isInteger(amount) || amount < 1 || amount > 100000) return setMessage("Enter a whole-number award amount.");
-    award({ amount, label: "Custom award" });
+    award(amount);
     setCustomAmount("");
   }
 
@@ -81,8 +82,8 @@ export function OptimisticAward({ classroomId, students: initial, presets, symbo
   return <div className="grid gap-5">
     {pending.length > 0 && <div className="sticky top-24 z-20 flex items-center justify-between rounded-xl bg-amber-200 p-3 font-bold"><span>{pending.length} action{pending.length === 1 ? "" : "s"} not synced</span><button className="btn" onClick={() => pending.forEach((item) => void send(item))}>Retry all</button></div>}
     <div className="panel grid gap-3 p-4 md:sticky md:top-20 md:z-10 md:grid-cols-[1fr_auto]">
-      <input className="field" value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Optional reason" />
-      <div className="flex gap-2 overflow-x-auto">{presets.map((preset) => <button className="btn btn-accent whitespace-nowrap" onClick={() => award(preset)} key={preset.id}>+{preset.amount} {preset.label}</button>)}</div>
+      <input className="field" value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Optional note" />
+      <div className="grid grid-cols-3 gap-2">{QUICK_AMOUNTS.map((amount) => <button className="btn btn-accent text-lg" onClick={() => award(amount)} key={amount}>+{amount}</button>)}</div>
       <div className="grid grid-cols-[1fr_auto] gap-2"><input className="field" type="number" inputMode="numeric" min="1" step="1" max="100000" value={customAmount} onChange={(event) => setCustomAmount(event.target.value)} onKeyDown={(event) => event.key === "Enter" && awardCustom()} placeholder="Custom amount" aria-label="Custom award amount" /><button className="btn" onClick={awardCustom}>Award custom</button></div>
       <div className="grid grid-cols-2 gap-2 md:flex md:justify-end" aria-label="Student view"><button className={`btn ${view === "cards" ? "btn-accent" : "btn-soft"}`} aria-pressed={view === "cards"} onClick={() => changeView("cards")}>Cards</button><button className={`btn ${view === "list" ? "btn-accent" : "btn-soft"}`} aria-pressed={view === "list"} onClick={() => changeView("list")}>List</button></div>
       <p className="text-sm text-slate-600 md:col-span-2">{selected.length} selected · {message || "Choose students, then tap an award."}</p>
