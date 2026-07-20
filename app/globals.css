@@ -1,0 +1,24 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; --ink: #23312c; --cream: #fbf6e9; --coral: #e85d43; --mint: #cde7d8; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--cream); color: var(--ink); font-family: "DM Sans", sans-serif; }
+h1, h2, h3, .display { font-family: "Space Grotesk", sans-serif; }
+button, input, select, textarea, a { -webkit-tap-highlight-color: transparent; }
+button, .button { min-height: 44px; }
+.panel { border: 1px solid #23312c20; border-radius: 1.25rem; background: #fffdf7; box-shadow: 0 8px 24px #23312c0a; }
+.field { width: 100%; min-height: 46px; border: 1px solid #23312c35; border-radius: .8rem; background: white; padding: .7rem .85rem; }
+.btn { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: .4rem; border-radius: .8rem; background: var(--ink); color: white; padding: .65rem 1rem; font-weight: 700; }
+.btn:hover { opacity: .9; }
+.btn-accent { background: var(--coral); }
+.btn-soft { background: #e8eee9; color: var(--ink); }
+.label { display: grid; gap: .3rem; font-size: .88rem; font-weight: 700; }
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+  .print-grid { display: grid !important; grid-template-columns: repeat(2, 3.5in); gap: .15in; }
+  .print-tile { width: 3.5in; height: 2in; break-inside: avoid; box-shadow: none; border: 1px solid #bbb; }
+}

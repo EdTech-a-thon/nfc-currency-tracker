@@ -1,0 +1,54 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+
+export function Scanner({ mode = "award" }: { mode?: "award" | "checkout" }) {
+  const router = useRouter();
+  const scanner = useRef<{ stop: () => Promise<void> } | null>(null);
+  const [open, setOpen] = useState(false);
+  const [manual, setManual] = useState("");
+  const [error, setError] = useState("");
+  const [student, setStudent] = useState<{ id: string; name: string; balance: number; symbol: string; currencyName: string; presets: { label: string; amount: number }[] } | null>(null);
+  const [status, setStatus] = useState("");
+
+  async function resolve(value: string) {
+    const token = value.match(/\/(?:c|s)\/([^/?#]+)/)?.[1] ?? value.trim();
+    if (mode === "checkout") return router.push(`/scan/${encodeURIComponent(token)}?mode=checkout`);
+    setStatus("Finding student...");
+    const response = await fetch(`/api/cards/resolve?identifier=${encodeURIComponent(token)}`);
+    const result = await response.json();
+    if (!response.ok) { setStudent(null); setStatus(result.error ?? "Card not assigned."); return; }
+    setStudent(result); setStatus("Ready to award. Keep scanning when finished.");
+  }
+
+  async function award(amount: number, reason: string) {
+    if (!student) return;
+    setStudent({ ...student, balance: student.balance + amount }); setStatus("Saving...");
+    try {
+      const response = await fetch("/api/transactions", { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() }, body: JSON.stringify({ studentIds: [student.id], amount, reason }) });
+      const result = await response.json(); if (!response.ok) throw new Error(result.error);
+      setStatus(`Synced +${amount} ${student.currencyName}. Scan the next card.`);
+    } catch (failure) { setStudent({ ...student, balance: student.balance - amount }); setStatus(failure instanceof Error ? failure.message : "Could not save."); }
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    import("html5-qrcode").then(async ({ Html5Qrcode }) => {
+      if (!active) return;
+      const reader = new Html5Qrcode("qr-reader");
+      scanner.current = reader;
+      try {
+        await reader.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 240, height: 240 } }, (value) => {
+          const token = value.match(/\/(?:c|s)\/([^/?#]+)/)?.[1] ?? value.trim();
+          void resolve(token);
+        }, () => undefined);
+      } catch { setError("Camera access was unavailable. Check permission or enter the 4-character code."); }
+    });
+    return () => { active = false; if (scanner.current) void scanner.current.stop().catch(() => undefined); };
+  }, [open, mode, router]);
+
+  function submit() { if (manual.trim()) void resolve(manual.trim()); }
+  return <div className="panel p-4"><div className="flex flex-wrap items-center gap-3"><button className="btn btn-accent" onClick={() => setOpen((value) => !value)}>{open ? "Close camera" : "Scan QR card"}</button><input className="field max-w-56 uppercase" maxLength={40} value={manual} onChange={(event) => setManual(event.target.value)} onKeyDown={(event) => event.key === "Enter" && submit()} placeholder="Enter short code" /><button className="btn" onClick={submit}>Find card</button></div>{error && <p className="mt-3 text-red-700">{error}</p>}{open && <div id="qr-reader" className="mx-auto mt-4 max-w-lg overflow-hidden rounded-xl" />}{student && mode === "award" && <div className="mt-4 rounded-xl bg-[#cde7d8] p-4"><div className="flex items-center justify-between"><strong className="text-xl">{student.name}</strong><span className="display text-3xl">{student.symbol}{student.balance}</span></div><div className="mt-3 flex flex-wrap gap-2">{student.presets.map((preset) => <button className="btn btn-accent" onClick={() => void award(preset.amount, preset.label)} key={preset.label}>+{preset.amount} {preset.label}</button>)}</div></div>}<p className="mt-3 text-sm">{status}</p></div>;
+}

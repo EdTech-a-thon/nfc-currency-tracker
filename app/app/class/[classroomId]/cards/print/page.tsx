@@ -1,0 +1,7 @@
+import { requireTeacher } from "@/lib/auth";
+import { ownedClassroom } from "@/lib/classes";
+import { cardUrl } from "@/lib/cards";
+import { db } from "@/lib/db";
+import { QrCode } from "@/components/QrCode";
+import { PrintButton } from "@/components/PrintButton";
+export default async function PrintCards({ params }: { params: Promise<{ classroomId: string }> }) { const teacher = await requireTeacher(); const { classroomId } = await params; await ownedClassroom(teacher.id, classroomId); const cards = await db.card.findMany({ where: { teacherId: teacher.id }, orderBy: { label: "asc" } }); return <div className="grid gap-5"><div className="no-print flex items-center justify-between"><div><h1 className="text-4xl">Print card labels</h1><p>Cards intentionally show no student names.</p></div><PrintButton /></div><div className="print-grid grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{cards.map((card) => <div className="print-tile panel flex h-56 items-center justify-between p-5" key={card.id}><div><p className="text-sm font-bold uppercase tracking-widest">Class card</p><p className="display mt-2 text-5xl">#{card.label}</p><p className="display mt-3 text-2xl tracking-[.2em]">{card.shortCode}</p></div><QrCode value={cardUrl(card.token)} /></div>)}</div>{!cards.length && <p className="panel p-8">No cards generated yet.</p>}</div>; }
