@@ -71,7 +71,7 @@ export async function addStudents(form: FormData) {
   const classroomId = id.parse(text(form, "classroomId"));
   const classroom = await db.classroom.findFirst({ where: { id: classroomId, teacherId: teacher.id, archived: false } });
   if (!classroom) throw new Error("Classroom not found.");
-  const names = text(form, "names").split(/\r?\n/).map((line) => line.split(",")[0].trim()).filter(Boolean).slice(0, 200);
+  const names = text(form, "names").split(/[,\r\n]+/).map((studentName) => studentName.trim()).filter(Boolean).slice(0, 200);
   if (!names.length) throw new Error("Add at least one name.");
   await db.student.createMany({ data: names.map((displayName) => ({ teacherId: teacher.id, classroomId, displayName: name.parse(displayName) })) });
   refresh();
