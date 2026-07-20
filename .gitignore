@@ -1,7 +1,7 @@
 node_modules
 .next
-dev.db
-dev.db-journal
+*.db
+*.db-journal
 backups/
 *.tsbuildinfo
 out
