@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { db } from "@/lib/db";
 import { balance, postEntry, ServiceError } from "@/lib/ledger";
+import { resolveCard } from "@/lib/cards";
 
 beforeAll(() => { execFileSync("npx", ["prisma", "db", "push", "--skip-generate", "--force-reset"], { env: process.env }); });
 beforeEach(async () => { await db.teacher.deleteMany(); });
@@ -24,6 +25,16 @@ describe("currency service invariants", () => {
   });
   it("reassignment clears the prior active student", async () => {
     const { teacher, classroom, student } = await setup(); const replacement = await db.student.create({ data: { teacherId: teacher.id, classroomId: classroom.id, displayName: "Replacement" } }); const card = await db.card.create({ data: { teacherId: teacher.id, token: crypto.randomUUID() + crypto.randomUUID(), shortCode: "7K2Q", label: "1", status: "ASSIGNED" } }); const old = await db.cardAssignment.create({ data: { cardId: card.id, studentId: student.id } }); await db.$transaction([db.cardAssignment.update({ where: { id: old.id }, data: { endedAt: new Date() } }), db.cardAssignment.create({ data: { cardId: card.id, studentId: replacement.id } })]); expect(await db.cardAssignment.count({ where: { cardId: card.id, endedAt: null } })).toBe(1); expect((await db.cardAssignment.findFirst({ where: { cardId: card.id, endedAt: null } }))?.studentId).toBe(replacement.id);
+  });
+  it("a permanent card URL resolves to its currently assigned student", async () => {
+    const { teacher, classroom, student } = await setup();
+    const replacement = await db.student.create({ data: { teacherId: teacher.id, classroomId: classroom.id, displayName: "Replacement" } });
+    const token = crypto.randomUUID() + crypto.randomUUID();
+    const card = await db.card.create({ data: { teacherId: teacher.id, token, shortCode: "8M3R", label: "1", status: "ASSIGNED" } });
+    const firstAssignment = await db.cardAssignment.create({ data: { cardId: card.id, studentId: student.id } });
+    expect((await resolveCard(token))?.student.id).toBe(student.id);
+    await db.$transaction([db.cardAssignment.update({ where: { id: firstAssignment.id }, data: { endedAt: new Date() } }), db.cardAssignment.create({ data: { cardId: card.id, studentId: replacement.id } })]);
+    expect((await resolveCard(token))?.student.id).toBe(replacement.id);
   });
   it("balance follows a student across a class transfer", async () => {
     const { teacher, student } = await setup(); await postEntry({ teacherId: teacher.id, studentId: student.id, amount: 7, reason: "Earned", kind: "AWARD", idempotencyKey: "transfer-test" }); const next = await db.classroom.create({ data: { teacherId: teacher.id, name: "Next", schoolYear: "2026" } }); await db.student.update({ where: { id: student.id }, data: { classroomId: next.id } }); expect(await balance(student.id)).toBe(7);
