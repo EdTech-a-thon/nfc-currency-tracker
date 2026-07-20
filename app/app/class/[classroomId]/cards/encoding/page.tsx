@@ -6,11 +6,11 @@ import { CardEncodingList } from "@/components/CardEncodingList";
 
 export default async function Encoding({ params }: { params: Promise<{ classroomId: string }> }) {
   const teacher = await requireTeacher(); const { classroomId } = await params; const classroom = await ownedClassroom(teacher.id, classroomId);
-  const cards = await db.card.findMany({ where: { teacherId: teacher.id }, orderBy: { label: "asc" }, include: { assignments: { where: { endedAt: null }, take: 1, include: { student: true } } } });
+  const cards = await db.card.findMany({ where: { teacherId: teacher.id }, include: { assignments: { where: { endedAt: null }, take: 1, include: { student: true } } } });
   const orderedCards = [...cards].sort((first, second) => {
     const firstInClass = first.assignments[0]?.student.classroomId === classroomId ? 0 : first.status === "AVAILABLE" ? 1 : 2;
     const secondInClass = second.assignments[0]?.student.classroomId === classroomId ? 0 : second.status === "AVAILABLE" ? 1 : 2;
-    return firstInClass - secondInClass || Number(first.label) - Number(second.label);
+    return firstInClass - secondInClass || Number(first.label) - Number(second.label) || first.label.localeCompare(second.label, undefined, { numeric: true });
   });
   return <div className="grid gap-5">
     <div><p className="font-bold text-[#e85d43]">{classroom.name}</p><h1 className="text-4xl">Write your NFC cards</h1><p className="mt-2 max-w-3xl">On your iPhone, tap <strong>Copy URL</strong>, switch to NFC Tools, create a URL record, paste, and write it to the matching numbered card. Each physical card is written only once.</p></div>

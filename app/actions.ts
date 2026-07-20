@@ -172,6 +172,22 @@ export async function setCardStatus(form: FormData) {
   refresh();
 }
 
+export async function bulkSetCardStatus(form: FormData) {
+  const teacher = await requireTeacher();
+  const cardIds = [...new Set(form.getAll("cardIds").map(String))].slice(0, 200);
+  const status = text(form, "status");
+  if (!cardIds.length) throw new Error("Select at least one card.");
+  if (!(["AVAILABLE", "LOST", "RETIRED"] as const).includes(status as "AVAILABLE")) throw new Error("Invalid card status.");
+  await db.$transaction(async (tx) => {
+    const cards = await tx.card.findMany({ where: { id: { in: cardIds }, teacherId: teacher.id }, select: { id: true } });
+    if (cards.length !== cardIds.length) throw new Error("One or more cards were not found.");
+    const ownedIds = cards.map((card) => card.id);
+    await tx.cardAssignment.updateMany({ where: { cardId: { in: ownedIds }, endedAt: null }, data: { endedAt: new Date() } });
+    await tx.card.updateMany({ where: { id: { in: ownedIds }, teacherId: teacher.id }, data: { status: status as "AVAILABLE" | "LOST" | "RETIRED" } });
+  });
+  refresh();
+}
+
 export async function award(form: FormData) {
   const teacher = await requireTeacher();
   const amount = wholeAmount.parse(text(form, "amount"));
