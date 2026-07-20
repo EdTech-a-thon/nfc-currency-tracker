@@ -129,6 +129,20 @@ export async function assignCard(form: FormData) {
   refresh();
 }
 
+export async function unassignCard(form: FormData) {
+  const teacher = await requireTeacher();
+  const studentId = id.parse(text(form, "studentId"));
+  await db.$transaction(async (tx) => {
+    const student = await tx.student.findFirst({ where: { id: studentId, teacherId: teacher.id } });
+    if (!student) throw new Error("Student not found.");
+    const assignments = await tx.cardAssignment.findMany({ where: { studentId, endedAt: null }, select: { id: true, cardId: true } });
+    if (!assignments.length) return;
+    await tx.cardAssignment.updateMany({ where: { id: { in: assignments.map((assignment) => assignment.id) } }, data: { endedAt: new Date() } });
+    await tx.card.updateMany({ where: { id: { in: assignments.map((assignment) => assignment.cardId) }, teacherId: teacher.id }, data: { status: "AVAILABLE" } });
+  });
+  refresh();
+}
+
 export async function autoAssign(form: FormData) {
   const teacher = await requireTeacher();
   const classroomId = id.parse(text(form, "classroomId"));
