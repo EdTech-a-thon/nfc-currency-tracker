@@ -1,9 +1,16 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
+
 const db = new PrismaClient();
-const first = ["Avery", "Bailey", "Cameron", "Dakota", "Emerson", "Finley", "Harper", "Jordan", "Kai", "Logan", "Morgan", "Nico", "Parker", "Quinn", "Riley", "Sage", "Taylor", "Alex", "Casey", "Drew", "Jamie", "Reese", "Rowan", "Skyler"];
-const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
-function code(number: number) { let value = number; let result = ""; for (let place = 0; place < 4; place++) { result = alphabet[value % alphabet.length] + result; value = Math.floor(value / alphabet.length); } return result; }
-async function main() { await db.teacher.deleteMany({ where: { email: "demo@example.com" } }); const teacher = await db.teacher.create({ data: { email: "demo@example.com", displayName: "Ms. Rivera", passwordHash: await bcrypt.hash("classroom123", 12) } }); const classes = []; for (const [index, room] of ["Sunflower Room", "Maple Room", "Last Year Archive"].entries()) { classes.push(await db.classroom.create({ data: { teacherId: teacher.id, name: room, schoolYear: index === 2 ? "2025-2026" : "2026-2027", archived: index === 2, archivedAt: index === 2 ? new Date() : null, currencyName: index === 1 ? "Maple Miles" : "Class Bucks", currencySymbol: index === 1 ? "★" : "$", awardPresets: { create: [{ label: "Ready to learn", amount: 1 }, { label: "Kind teammate", amount: 2, sortOrder: 1 }, { label: "Big effort", amount: 5, sortOrder: 2 }] }, storeItems: { create: [{ name: "Choose your seat", price: 8 }, { name: "Homework pass", price: 15, sortOrder: 1 }, { name: "Prize box", price: 20, stock: 12, sortOrder: 2 }] } } })); } let cardNumber = 1; for (const classroom of classes) { for (const [index, given] of first.entries()) { const student = await db.student.create({ data: { teacherId: teacher.id, classroomId: classroom.id, displayName: `${given} ${String.fromCharCode(65 + (index % 12))}.` } }); const card = await db.card.create({ data: { teacherId: teacher.id, token: randomBytes(24).toString("base64url"), shortCode: code(cardNumber), label: String(cardNumber++), status: "ASSIGNED" } }); await db.cardAssignment.create({ data: { studentId: student.id, cardId: card.id } }); for (let week = 0; week < 4; week++) { await db.transaction.create({ data: { studentId: student.id, classroomId: classroom.id, amount: 1 + ((index + week) % 3), reason: ["Ready to learn", "Kind teammate", "Big effort"][(index + week) % 3], kind: "AWARD", createdByTeacherId: teacher.id, idempotencyKey: `seed-${classroom.id}-${index}-${week}`, createdAt: new Date(Date.now() - week * 7 * 86400000 - index * 3600000) } }); } } } console.log("Demo login: demo@example.com / classroom123"); }
+const first = ["Avery", "Bailey", "Cameron", "Dakota", "Emerson", "Finley", "Harper", "Jordan"];
+
+async function main() {
+  await db.teacher.deleteMany({ where: { email: "demo@example.com" } });
+  const teacher = await db.teacher.create({ data: { email: "demo@example.com", displayName: "Ms. Rivera", passwordHash: await bcrypt.hash("classroom123", 12) } });
+  const classes = await Promise.all(["Sunflower Room", "Maple Room", "Last Year Archive"].map((name, index) => db.classroom.create({ data: { teacherId: teacher.id, name, schoolYear: index === 2 ? "2025-2026" : "2026-2027", archived: index === 2, archivedAt: index === 2 ? new Date() : null, currencyName: index === 1 ? "Maple Miles" : "Class Bucks", currencySymbol: index === 1 ? "★" : "$" } })));
+  await db.storeItem.createMany({ data: [{ teacherId: teacher.id, name: "Choose your seat", price: 8, sortOrder: 1 }, { teacherId: teacher.id, name: "Homework pass", price: 15, sortOrder: 2 }, { teacherId: teacher.id, name: "Prize box", price: 20, stock: 12, sortOrder: 3 }] });
+  for (const classroom of classes) for (const [index, name] of first.entries()) await db.student.create({ data: { teacherId: teacher.id, classroomId: classroom.id, displayName: `${name} ${String.fromCharCode(65 + index)}.` } });
+}
+
 main().finally(() => db.$disconnect());

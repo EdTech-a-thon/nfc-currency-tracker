@@ -226,13 +226,15 @@ export async function undo(form: FormData) {
 
 export async function saveStoreItem(form: FormData) {
   const teacher = await requireTeacher();
-  const classroomId = id.parse(text(form, "classroomId"));
-  const classroom = await db.classroom.findFirst({ where: { id: classroomId, teacherId: teacher.id, archived: false } });
-  if (!classroom) throw new Error("Classroom not found.");
-  const data = { name: name.parse(text(form, "name")), price: wholeAmount.parse(text(form, "price")), stock: text(form, "stock") ? wholeAmount.parse(text(form, "stock")) : null, active: text(form, "active") !== "false", sortOrder: Number(text(form, "sortOrder")) || 0 };
+  const data = { name: name.parse(text(form, "name")), price: wholeAmount.parse(text(form, "price")), stock: text(form, "stock") ? wholeAmount.parse(text(form, "stock")) : null, active: text(form, "active") !== "false" };
   const itemId = text(form, "itemId");
-  if (itemId) await db.storeItem.updateMany({ where: { id: itemId, classroomId }, data });
-  else await db.storeItem.create({ data: { classroomId, ...data } });
+  if (itemId) await db.storeItem.updateMany({ where: { id: itemId, teacherId: teacher.id }, data });
+  else {
+    const count = await db.storeItem.count({ where: { teacherId: teacher.id } });
+    await db.storeItem.create({ data: { teacherId: teacher.id, ...data, sortOrder: count + 1 } });
+  }
+  const returnTo = text(form, "returnTo");
+  if (/^\/app\/class\/[^/]+\/store$/.test(returnTo)) redirect(`${returnTo}?saved=1`);
   refresh();
 }
 
@@ -244,14 +246,14 @@ export async function savePreset(form: FormData) {
   const amount = wholeAmount.parse(text(form, "amount"));
   const label = name.parse(text(form, "label"));
   const presetId = text(form, "presetId");
-  if (presetId) await db.awardPreset.updateMany({ where: { id: presetId, classroomId }, data: { amount, label, sortOrder: Number(text(form, "sortOrder")) || 0 } });
-  else await db.awardPreset.create({ data: { classroomId, amount, label, sortOrder: Number(text(form, "sortOrder")) || 0 } });
+  if (presetId) await db.awardPreset.updateMany({ where: { id: presetId, classroomId }, data: { amount, label } });
+  else await db.awardPreset.create({ data: { classroomId, amount, label, sortOrder: await db.awardPreset.count({ where: { classroomId } }) } });
   refresh();
 }
 
 export async function purchase(form: FormData) {
   const teacher = await requireTeacher();
-  const items = form.getAll("itemIds").map(String).map((itemId) => ({ id: itemId, quantity: Number(text(form, `quantity-${itemId}`)) || 1 }));
+  const items = form.getAll("itemIds").map(String).map((id) => ({ id, quantity: 1 }));
   await checkout({ teacherId: teacher.id, studentId: id.parse(text(form, "studentId")), items, idempotencyKey: key(form) });
   refresh();
 }
@@ -261,6 +263,23 @@ export async function archiveYear(form: FormData) {
   const schoolYear = name.parse(text(form, "schoolYear"));
   await db.classroom.updateMany({ where: { teacherId: teacher.id, schoolYear }, data: { archived: true, archivedAt: new Date() } });
   refresh();
+}
+
+export async function deleteClassroom(form: FormData) {
+  const teacher = await requireTeacher();
+  const classroomId = id.parse(text(form, "classroomId"));
+  await db.$transaction(async (tx) => {
+    const classroom = await tx.classroom.findFirst({ where: { id: classroomId, teacherId: teacher.id }, select: { id: true } });
+    if (!classroom) throw new Error("Classroom not found.");
+    const students = await tx.student.findMany({ where: { classroomId, teacherId: teacher.id }, select: { id: true } });
+    const studentIds = students.map((student) => student.id);
+    const assignments = await tx.cardAssignment.findMany({ where: { studentId: { in: studentIds }, endedAt: null }, select: { cardId: true } });
+    await tx.cardAssignment.updateMany({ where: { studentId: { in: studentIds }, endedAt: null }, data: { endedAt: new Date() } });
+    await tx.card.updateMany({ where: { id: { in: assignments.map((assignment) => assignment.cardId) }, teacherId: teacher.id }, data: { status: "AVAILABLE" } });
+    await tx.student.deleteMany({ where: { id: { in: studentIds }, teacherId: teacher.id } });
+    await tx.classroom.delete({ where: { id: classroom.id } });
+  });
+  redirect("/app");
 }
 
 export async function deleteYear(form: FormData) {

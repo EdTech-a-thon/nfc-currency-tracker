@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 const ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 export function cardUrl(token: string) {
-  return `${(process.env.CARD_BASE_URL ?? "http://localhost:8000").replace(/\/$/, "")}/c/${token}`;
+  return `${(process.env.CARD_BASE_URL ?? "https://nfc-currency-tracker.edtechathon.com").replace(/\/$/, "")}/c/${token}`;
 }
 
 function shortCode() {
@@ -35,6 +35,6 @@ export async function resolveCard(identifier: string, teacherId?: string) {
       },
     },
   });
-  if (!card || card.status !== "ASSIGNED" || !card.assignments[0]?.student.active) return null;
+  if (!card || card.status !== "ASSIGNED" || !card.assignments[0]?.student.active || card.teacherId !== card.assignments[0].student.teacherId) return null;
   return { card, student: card.assignments[0].student };
 }
