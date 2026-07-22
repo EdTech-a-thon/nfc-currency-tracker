@@ -104,6 +104,37 @@ export async function moveStudents(form: FormData) {
   refresh();
 }
 
+export async function removeStudents(form: FormData) {
+  const teacher = await requireTeacher();
+  const classroomId = id.parse(text(form, "classroomId"));
+  const studentIds = [...new Set(form.getAll("studentIds").map(String))].slice(0, 200);
+  if (!studentIds.length) throw new Error("Select at least one student.");
+  await db.$transaction(async (tx) => {
+    const students = await tx.student.findMany({
+      where: { id: { in: studentIds }, classroomId, teacherId: teacher.id },
+      select: { id: true },
+    });
+    const ownedStudentIds = students.map((student) => student.id);
+    const assignments = await tx.cardAssignment.findMany({
+      where: { studentId: { in: ownedStudentIds }, endedAt: null },
+      select: { id: true, cardId: true },
+    });
+    await tx.cardAssignment.updateMany({
+      where: { id: { in: assignments.map((assignment) => assignment.id) } },
+      data: { endedAt: new Date() },
+    });
+    await tx.card.updateMany({
+      where: { id: { in: assignments.map((assignment) => assignment.cardId) }, teacherId: teacher.id },
+      data: { status: "AVAILABLE" },
+    });
+    await tx.student.updateMany({
+      where: { id: { in: ownedStudentIds }, teacherId: teacher.id },
+      data: { classroomId: null, active: false },
+    });
+  });
+  refresh();
+}
+
 export async function createCardBatch(form: FormData) {
   const teacher = await requireTeacher();
   await generateCards(teacher.id, Number(text(form, "count")));
