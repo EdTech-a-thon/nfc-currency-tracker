@@ -1,1 +1,1 @@
-export { default, dynamic } from "@/app/c/[token]/page";
+export { default } from "@/app/c/[token]/page";

@@ -1,13 +1,19 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { logout } from "@/app/actions";
+import { pb } from "@/lib/pocketbase";
 
 export function AppNav({ teacherName, classrooms }: { teacherName: string; classrooms: { id: string; name: string }[] }) {
   const pathname = usePathname();
   const navigation = useRouter();
   const currentId = pathname.match(/^\/app\/class\/([^/]+)/)?.[1];
   const currentClassroom = classrooms.find((room) => room.id === currentId);
+
+  function logOut() {
+    pb.authStore.clear();
+    navigation.replace("/login");
+  }
+
   return <header className="no-print sticky top-0 z-30 border-b border-black/10 bg-[#fbf6e9]/95 backdrop-blur">
     <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-3 py-2 sm:gap-3 sm:px-5 sm:py-3">
       <Link href="/app" className="display whitespace-nowrap text-base sm:text-lg">NFC <span className="text-[#e85d43]">Currency</span></Link>
@@ -20,7 +26,7 @@ export function AppNav({ teacherName, classrooms }: { teacherName: string; class
         {!currentId && <option value="" disabled>Select a class</option>}{classrooms.map((room) => <option key={room.id} value={room.id}>{room.name}</option>)}
       </select>
       <span className="hidden text-sm md:inline">{teacherName}</span>
-      <form action={logout}><button className="btn btn-soft px-3">Log out</button></form>
+      <button className="btn btn-soft px-3" onClick={logOut}>Log out</button>
     </div>
   </header>;
 }

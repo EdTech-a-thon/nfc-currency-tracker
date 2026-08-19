@@ -1,4 +1,13 @@
-import { currentTeacher } from "@/lib/auth";
-import { redirect } from "next/navigation";
+"use client";
 
-export default async function Home() { redirect((await currentTeacher()) ? "/app" : "/login"); }
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { currentTeacher } from "@/lib/pocketbase";
+
+export default function Home() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace(currentTeacher() ? "/app" : "/login");
+  }, [router]);
+  return null;
+}

@@ -1,7 +1,51 @@
-import { login, signup } from "@/app/actions";
+"use client";
 
-export default async function Login({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const error = (await searchParams).error;
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { pb, readableError } from "@/lib/pocketbase";
+
+export default function Login() {
+  const router = useRouter();
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function signIn(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setBusy(true);
+    setError("");
+    try {
+      await pb.collection("teachers").authWithPassword(
+        String(form.get("email")).trim().toLowerCase(), String(form.get("password"))
+      );
+      router.replace("/app");
+    } catch {
+      setError("That email or password did not match.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function createAccount(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const email = String(form.get("email")).trim().toLowerCase();
+    const password = String(form.get("password"));
+    setBusy(true);
+    setError("");
+    try {
+      await pb.collection("teachers").create({
+        email, password, passwordConfirm: password, displayName: String(form.get("displayName")).trim(),
+      });
+      await pb.collection("teachers").authWithPassword(email, password);
+      router.replace("/app");
+    } catch (problem) {
+      setError(readableError(problem, "That account could not be created."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return <main className="min-h-screen bg-[#23312c] p-5 md:grid md:place-items-center">
     <div className="mx-auto grid max-w-5xl overflow-hidden rounded-[2rem] bg-[#fbf6e9] md:grid-cols-2">
       <section className="flex min-h-72 flex-col justify-between bg-[#e85d43] p-8 text-white md:min-h-[640px] md:p-12">
@@ -11,18 +55,18 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
       </section>
       <section className="p-7 md:p-12">
         <h2 className="text-2xl">Welcome back</h2>
-        {error && <p className="my-3 rounded-lg bg-red-100 p-3 text-red-800">That email or password did not match.</p>}
-        <form action={login} className="mt-5 grid gap-4">
+        {error && <p className="my-3 rounded-lg bg-red-100 p-3 text-red-800" role="alert">{error}</p>}
+        <form onSubmit={signIn} className="mt-5 grid gap-4">
           <label className="label">Email<input className="field" name="email" type="email" autoComplete="email" required /></label>
           <label className="label">Password<input className="field" name="password" type="password" autoComplete="current-password" required /></label>
-          <button className="btn btn-accent">Log in</button>
+          <button className="btn btn-accent" disabled={busy}>{busy ? "Please wait..." : "Log in"}</button>
         </form>
         <details className="mt-10 border-t border-black/10 pt-6"><summary className="cursor-pointer font-bold">Create a teacher account</summary>
-          <form action={signup} className="mt-4 grid gap-3">
+          <form onSubmit={createAccount} className="mt-4 grid gap-3">
             <label className="label">Your name<input className="field" name="displayName" required /></label>
             <label className="label">Email<input className="field" name="email" type="email" required /></label>
             <label className="label">Password<input className="field" name="password" type="password" minLength={8} required /></label>
-            <button className="btn">Create account</button>
+            <button className="btn" disabled={busy}>Create account</button>
           </form>
         </details>
       </section>

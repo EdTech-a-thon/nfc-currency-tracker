@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { postEntry } from "@/lib/api";
+import { readableError } from "@/lib/pocketbase";
 
-export function CardAward({ studentId, presets, currencyName }: { studentId: string; presets: { id: string; label: string; amount: number }[]; currencyName: string }) {
+export function CardAward({ studentId, presets, currencyName, onPosted }: { studentId: string; presets: { id: string; label: string; amount: number }[]; currencyName: string; onPosted: () => void }) {
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [status, setStatus] = useState("");
@@ -17,18 +19,16 @@ export function CardAward({ studentId, presets, currencyName }: { studentId: str
     setSaving(true);
     setStatus("Saving...");
     try {
-      const response = await fetch("/api/transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() },
-        body: JSON.stringify({ studentIds: [studentId], amount: awardAmount, reason: awardReason }),
+      await postEntry({
+        studentId, amount: awardAmount, reason: awardReason || "Classroom award",
+        kind: "AWARD", idempotencyKey: crypto.randomUUID(),
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
       setStatus(`Synced +${awardAmount} ${currencyName}`);
       setAmount("");
       setReason("");
+      onPosted();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not save.");
+      setStatus(readableError(error, "Could not save."));
     } finally {
       setSaving(false);
     }

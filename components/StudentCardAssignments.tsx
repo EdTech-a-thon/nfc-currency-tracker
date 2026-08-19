@@ -1,16 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { assignCard, unassignCard } from "@/app/actions";
+import { assignCard, unassignCard } from "@/lib/api";
+import { readableError } from "@/lib/pocketbase";
 
 type AvailableCard = { id: string; label: string; shortCode: string };
 type StudentCard = { id: string; label: string; shortCode: string; url: string };
 type Student = { id: string; displayName: string; card: StudentCard | null };
 
-export function StudentCardAssignments({ students, availableCards }: { students: Student[]; availableCards: AvailableCard[] }) {
+export function StudentCardAssignments({ students, availableCards, onChanged }: { students: Student[]; availableCards: AvailableCard[]; onChanged: () => void }) {
   const [openStudentId, setOpenStudentId] = useState<string | null>(students.find((student) => !student.card)?.id ?? students[0]?.id ?? null);
   const [copiedCardId, setCopiedCardId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const withoutCards = students.filter((student) => !student.card).length;
+
+  async function run(work: () => Promise<unknown>) {
+    setBusy(true);
+    try {
+      await work();
+      onChanged();
+    } catch (problem) {
+      window.alert(readableError(problem));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function copyUrl(card: StudentCard) {
     try {
@@ -43,8 +57,8 @@ export function StudentCardAssignments({ students, availableCards }: { students:
           {student.card ? <>
             <div className="rounded-xl bg-[#cde7d8] p-4"><p className="text-sm font-bold uppercase tracking-wider">Assigned physical card</p><p className="display mt-1 text-3xl">Card #{student.card.label}</p><p className="font-bold tracking-[.18em]">{student.card.shortCode}</p></div>
             <p className="truncate text-xs text-slate-500">{student.card.url}</p>
-            <div className="grid grid-cols-2 gap-2"><button type="button" className={`btn ${copiedCardId === student.card.id ? "bg-green-700" : "btn-accent"}`} onClick={() => void copyUrl(student.card!)}>{copiedCardId === student.card.id ? "Copied!" : "Copy NFC URL"}</button><form action={unassignCard} onSubmit={(event) => { if (!window.confirm(`Remove Card #${student.card?.label} from ${student.displayName}? The card will become available.`)) event.preventDefault(); }}><input type="hidden" name="studentId" value={student.id} /><button className="btn btn-soft w-full">Remove card</button></form></div>
-          </> : <form action={assignCard} className="grid gap-2 sm:grid-cols-[1fr_auto]"><input type="hidden" name="studentId" value={student.id} /><label className="label">Available physical card<select className="field" name="cardId" required><option value="">Choose a card...</option>{availableCards.map((card) => <option value={card.id} key={card.id}>Card #{card.label} · {card.shortCode}</option>)}</select></label><button className="btn btn-accent self-end" disabled={!availableCards.length}>Assign card</button>{!availableCards.length && <p className="text-sm text-amber-700 sm:col-span-2">No cards are available. Generate more cards or remove one from another student.</p>}</form>}
+            <div className="grid grid-cols-2 gap-2"><button type="button" className={`btn ${copiedCardId === student.card.id ? "bg-green-700" : "btn-accent"}`} onClick={() => void copyUrl(student.card!)}>{copiedCardId === student.card.id ? "Copied!" : "Copy NFC URL"}</button><button type="button" className="btn btn-soft w-full" disabled={busy} onClick={() => { if (window.confirm(`Remove Card #${student.card?.label} from ${student.displayName}? The card will become available.`)) void run(() => unassignCard(student.id)); }}>Remove card</button></div>
+          </> : <form onSubmit={(event) => { event.preventDefault(); const cardId = String(new FormData(event.currentTarget).get("cardId")); if (cardId) void run(() => assignCard(student.id, cardId)); }} className="grid gap-2 sm:grid-cols-[1fr_auto]"><label className="label">Available physical card<select className="field" name="cardId" required><option value="">Choose a card...</option>{availableCards.map((card) => <option value={card.id} key={card.id}>Card #{card.label} · {card.shortCode}</option>)}</select></label><button className="btn btn-accent self-end" disabled={!availableCards.length || busy}>Assign card</button>{!availableCards.length && <p className="text-sm text-amber-700 sm:col-span-2">No cards are available. Generate more cards or remove one from another student.</p>}</form>}
         </div>}
       </article>;
     })}</div>

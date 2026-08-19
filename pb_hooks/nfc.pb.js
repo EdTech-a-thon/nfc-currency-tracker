@@ -56,20 +56,27 @@ routerAdd("POST", "/api/nfc/awards", (e) => {
   if (!studentIds.length) throw new BadRequestError("Choose at least one student.");
 
   let awarded = 0;
+  const transactionIds = [];
   e.app.runInTransaction((tx) => {
     studentIds.forEach((studentId, index) => {
       const student = helpers.ownedStudent(tx, e.auth.id, studentId, true);
       const classroom = helpers.ownedClassroom(tx, e.auth.id, student.getString("classroom"), true);
       const idempotencyKey = `${key}-${index}`;
-      if (helpers.alreadyPosted(tx, e.auth.id, idempotencyKey)) return;
-      helpers.saveTransaction(tx, {
+      // A retry of the same award returns the original rows rather than adding more.
+      const previous = helpers.alreadyPosted(tx, e.auth.id, idempotencyKey);
+      if (previous) {
+        transactionIds.push(previous.id);
+        return;
+      }
+      const posted = helpers.saveTransaction(tx, {
         student: student.id, classroom: classroom.id, amount, reason,
         kind: "AWARD", createdBy: e.auth.id, idempotencyKey,
       });
+      transactionIds.push(posted.id);
       awarded++;
     });
   });
-  return e.json(200, { awarded });
+  return e.json(200, { awarded, transactionIds });
 }, $apis.requireAuth("teachers"), $apis.bodyLimit(16384));
 
 // A single award or adjustment, which may be negative but never overdraws.

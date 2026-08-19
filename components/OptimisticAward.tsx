@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { awardMany, undoEntry } from "@/lib/api";
+import { readableError } from "@/lib/pocketbase";
 
 type Student = { id: string; displayName: string; balance: number };
 type Preset = { id: string; label: string; amount: number };
@@ -48,9 +50,7 @@ export function OptimisticAward({ classroomId, students: initial, presets, symbo
     }, 4000));
     setPending((current) => [...current.filter((row) => row.key !== item.key), { ...item, status: "syncing" }]);
     try {
-      const response = await fetch("/api/transactions", { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": item.key }, body: JSON.stringify({ studentIds: item.studentIds, amount: item.amount, reason: item.reason }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Could not sync");
+      const result = await awardMany({ studentIds: item.studentIds, amount: item.amount, reason: item.reason, idempotencyKey: item.key });
       window.clearTimeout(syncTimers.current.get(item.key));
       syncTimers.current.delete(item.key);
       setPending((current) => current.filter((row) => row.key !== item.key));
@@ -65,7 +65,7 @@ export function OptimisticAward({ classroomId, students: initial, presets, symbo
       setPending((current) => [...current.filter((row) => row.key !== item.key), failed]);
       const queue = JSON.parse(localStorage.getItem(QUEUE) ?? "[]") as Pending[];
       localStorage.setItem(QUEUE, JSON.stringify([...queue.filter((row) => row.key !== item.key), failed]));
-      setMessage(error instanceof Error ? error.message : "Award waiting to retry.");
+      setMessage(readableError(error, "Award waiting to retry."));
     }
   }
 
@@ -76,13 +76,11 @@ export function OptimisticAward({ classroomId, students: initial, presets, symbo
     setLastAward(null);
     setStudents((current) => current.map((student) => award.studentIds.includes(student.id) ? { ...student, balance: student.balance - award.amount } : student));
     try {
-      const response = await fetch("/api/transactions", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ transactionIds: award.transactionIds }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Could not undo the award.");
+      for (const transactionId of award.transactionIds) await undoEntry(transactionId);
       setMessage("Award removed.");
     } catch (error) {
       setStudents((current) => current.map((student) => award.studentIds.includes(student.id) ? { ...student, balance: student.balance + award.amount } : student));
-      setMessage(error instanceof Error ? error.message : "Could not undo the award.");
+      setMessage(readableError(error, "Could not undo the award."));
     }
   }
 

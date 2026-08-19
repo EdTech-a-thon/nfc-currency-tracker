@@ -1,12 +1,25 @@
 "use client";
 
-import { deleteClassroom } from "@/app/actions";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { readableError } from "@/lib/pocketbase";
+import { deleteClassroom } from "@/lib/api";
 
 export function DeleteClassroomButton({ classroomId, classroomName }: { classroomId: string; classroomName: string }) {
-  return <form action={deleteClassroom} onSubmit={(event) => {
-    if (!window.confirm(`Delete ${classroomName}? This permanently removes its students and transaction history. Your shared account store will remain. This cannot be undone.`)) event.preventDefault();
-  }}>
-    <input type="hidden" name="classroomId" value={classroomId} />
-    <button className="btn bg-red-700">Delete class</button>
-  </form>;
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+
+  async function remove() {
+    if (!window.confirm(`Delete ${classroomName}? This permanently removes its students and transaction history. Your shared account store will remain. This cannot be undone.`)) return;
+    setBusy(true);
+    try {
+      await deleteClassroom(classroomId);
+      router.push("/app");
+    } catch (problem) {
+      window.alert(readableError(problem));
+      setBusy(false);
+    }
+  }
+
+  return <button className="btn bg-red-700" onClick={() => void remove()} disabled={busy}>Delete class</button>;
 }
