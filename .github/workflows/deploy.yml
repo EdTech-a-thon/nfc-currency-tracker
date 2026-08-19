@@ -12,9 +12,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: file:./test.db
-      SESSION_SECRET: test-only-secret-at-least-32-characters
-      CARD_BASE_URL: https://cards.example.com
+      NEXT_PUBLIC_POCKETBASE_URL: http://127.0.0.1:8092
+      NEXT_PUBLIC_CARD_BASE_URL: https://cards.example.com
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,8 +21,19 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx prisma generate && npx prisma db push
       - run: npm run typecheck
+      # The tests exercise the real collection rules and hooks, so they need an
+      # instance running the migrations from this commit.
+      - name: Start PocketBase
+        run: |
+          ./deploy/install-pocketbase.sh
+          ./pocketbase serve --http=127.0.0.1:8092 --hooksDir=pb_hooks --migrationsDir=pb_migrations &
+          for attempt in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8092/api/health >/dev/null && exit 0
+            sleep 1
+          done
+          echo "PocketBase did not start" >&2
+          exit 1
       - run: npm test
       - run: npm run build
   deploy:

@@ -1,27 +1,24 @@
 services:
-  db:
-    image: postgres:17-alpine
+  pocketbase:
+    build:
+      context: .
+      dockerfile: Dockerfile.pocketbase
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
+      - pocketbase_data:/pb/pb_data
+      - ./pb_hooks:/pb/pb_hooks:ro
+      - ./pb_migrations:/pb/pb_migrations:ro
+    expose:
+      - "8090"
   app:
-    build: .
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_POCKETBASE_URL: ${NEXT_PUBLIC_POCKETBASE_URL}
+        NEXT_PUBLIC_CARD_BASE_URL: ${NEXT_PUBLIC_CARD_BASE_URL}
     restart: unless-stopped
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      SESSION_SECRET: ${SESSION_SECRET}
-      CARD_BASE_URL: ${CARD_BASE_URL}
     depends_on:
-      db:
+      pocketbase:
         condition: service_healthy
     expose:
       - "8000"
@@ -34,6 +31,7 @@ services:
       - "443:443/udp"
     environment:
       DOMAIN: ${DOMAIN}
+      POCKETBASE_DOMAIN: ${POCKETBASE_DOMAIN}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -42,6 +40,6 @@ services:
       app:
         condition: service_healthy
 volumes:
-  postgres_data:
+  pocketbase_data:
   caddy_data:
   caddy_config:

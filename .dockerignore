@@ -1,7 +1,8 @@
 .git
 .next
+.next-dev
 node_modules
 .env*
-backups
-*.db
+pb_data
+pocketbase
 npm-debug.log

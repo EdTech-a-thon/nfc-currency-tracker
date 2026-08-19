@@ -7,3 +7,13 @@
 		-Server
 	}
 }
+
+# The browser talks to PocketBase directly, so it needs its own public name.
+{$POCKETBASE_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy pocketbase:8090
+	header {
+		X-Content-Type-Options nosniff
+		-Server
+	}
+}
