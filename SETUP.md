@@ -29,9 +29,9 @@ cp .env.example .env
 chmod 600 .env
 ```
 
-Edit `.env` and set every value. `DOMAIN` and `POCKETBASE_DOMAIN` are the public hostnames without `https://`, and `NEXT_PUBLIC_POCKETBASE_URL` must be `https://` plus that PocketBase hostname. There is no separate session secret: PocketBase issues and checks the sign-in tokens itself.
+Edit `.env` and set every value. `DOMAIN` and `POCKETBASE_DOMAIN` are the public hostnames without `https://`, and `PUBLIC_POCKETBASE_URL` must be `https://` plus that PocketBase hostname. There is no separate session secret: PocketBase issues and checks the sign-in tokens itself.
 
-**Finalize `NEXT_PUBLIC_CARD_BASE_URL` before writing any NFC chip.** Cards are written once and may be locked. Changing this origin later invalidates every physical card, even if the main app moves to another hostname. A stable example is `https://cards.example.org`; point it at this VM and include it in Caddy if it differs from `DOMAIN`.
+**Finalize `PUBLIC_CARD_BASE_URL` before writing any NFC chip.** Cards are written once and may be locked. Changing this origin later invalidates every physical card, even if the main app moves to another hostname. A stable example is `https://cards.example.org`; point it at this VM and include it in Caddy if it differs from `DOMAIN`.
 
 If card and app hostnames differ, change the first line of `Caddyfile` to `{$DOMAIN}, cards.example.org {`.
 
@@ -90,4 +90,4 @@ docker compose up -d pocketbase app
 
 **Certificate is not issued:** Confirm the A record resolves to this VM, ports 80 and 443 are open, no stale AAAA record points elsewhere, and `DOMAIN` exactly matches DNS. Run `docker compose logs caddy`.
 
-**The app loads but nothing saves:** The browser calls PocketBase directly, so check that `NEXT_PUBLIC_POCKETBASE_URL` matches `POCKETBASE_DOMAIN` exactly, including `https://`. Because that value is baked in when the app is built, changing it needs a rebuild: `docker compose up -d --build app`. Run `docker compose logs pocketbase` to confirm the migrations applied.
+**The app loads but nothing saves:** The browser calls PocketBase directly, so check that `PUBLIC_POCKETBASE_URL` matches `POCKETBASE_DOMAIN` exactly, including `https://`. Because that value is baked in when the app is built, changing it needs a rebuild: `docker compose up -d --build app`. Run `docker compose logs pocketbase` to confirm the migrations applied.

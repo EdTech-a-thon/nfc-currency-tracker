@@ -1,6 +1,7 @@
 .git
-.next
+.svelte-kit
 .next-dev
+build
 node_modules
 .env*
 pb_data

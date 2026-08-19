@@ -14,8 +14,8 @@ services:
     build:
       context: .
       args:
-        NEXT_PUBLIC_POCKETBASE_URL: ${NEXT_PUBLIC_POCKETBASE_URL}
-        NEXT_PUBLIC_CARD_BASE_URL: ${NEXT_PUBLIC_CARD_BASE_URL}
+        PUBLIC_POCKETBASE_URL: ${PUBLIC_POCKETBASE_URL}
+        PUBLIC_CARD_BASE_URL: ${PUBLIC_CARD_BASE_URL}
     restart: unless-stopped
     depends_on:
       pocketbase:

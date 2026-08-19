@@ -38,12 +38,12 @@ npm run build
 
 ## Environment variables
 
-- `NEXT_PUBLIC_POCKETBASE_URL`: where the browser reaches PocketBase. `http://127.0.0.1:8092` locally; the PocketBase hostname in production.
-- `NEXT_PUBLIC_CARD_BASE_URL`: permanent public HTTPS origin encoded on physical cards. Decide this before writing cards.
+- `PUBLIC_POCKETBASE_URL`: where the browser reaches PocketBase. `http://127.0.0.1:8092` locally; the PocketBase hostname in production.
+- `PUBLIC_CARD_BASE_URL`: permanent public HTTPS origin encoded on physical cards. Decide this before writing cards.
 - `DOMAIN`: public app hostname used by Caddy, without a protocol.
 - `POCKETBASE_DOMAIN`: public PocketBase hostname used by Caddy, without a protocol.
 
-Both `NEXT_PUBLIC_` values are read when the app is built, so a production build needs them set at build time.
+Both `PUBLIC_` values are read when the app is built, so a production build needs them set at build time.
 
 See `.env.example` for examples and `SETUP.md` for the full VM, HTTPS, GitHub deployment, backup, and restore runbook.
 
@@ -60,7 +60,7 @@ Cards store only a URL. Names, assignments, balances, and history always stay in
 
 Blank NTAG215 cards and re-encodable hotel keycards both work. Confirm that hotel cards are writable before buying a set. iPhones open the written URL through background NFC reading without an installed app. The four-character code remains a backup for damaged cards and for devices that cannot read NFC.
 
-Never change `NEXT_PUBLIC_CARD_BASE_URL` after chips have been written and locked. The path is deliberately short: `/c/<permanent-token>`.
+Never change `PUBLIC_CARD_BASE_URL` after chips have been written and locked. The path is deliberately short: `/c/<permanent-token>`.
 
 ## Production deployment
 

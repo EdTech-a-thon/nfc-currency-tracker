@@ -1,7 +1,7 @@
 import { defineConfig } from "vitest/config";
-import path from "node:path";
 
+// The tests talk to a running PocketBase rather than to the app, so they need
+// none of the SvelteKit plugin machinery.
 export default defineConfig({
   test: { fileParallelism: false, testTimeout: 30000 },
-  resolve: { alias: { "@": path.resolve(__dirname) } },
 });

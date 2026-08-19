@@ -3,7 +3,7 @@ import PocketBase from "pocketbase";
 
 // These exercise the rules through PocketBase itself rather than a stand-in, so
 // they need a local instance running: npm run pb
-const BASE = process.env.NEXT_PUBLIC_POCKETBASE_URL ?? "http://127.0.0.1:8092";
+const BASE = process.env.PUBLIC_POCKETBASE_URL ?? "http://127.0.0.1:8092";
 
 beforeAll(async () => {
   const health = await fetch(`${BASE}/api/health`).catch(() => null);
