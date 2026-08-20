@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import ClassroomActions from "$lib/components/ClassroomActions.svelte";
+  import NewClassroomDialog from "$lib/components/NewClassroomDialog.svelte";
   import { deleteYear } from "$lib/api";
   import {
     pb,
@@ -17,6 +18,7 @@
 
   const session = requireTeacher();
   let message = $state("");
+  let creating = $state(false);
 
   const classes = createLoader<Summary[]>(async () => {
     const rooms = await pb
@@ -49,34 +51,6 @@
   const rooms = $derived(classes.state.data ?? []);
   const years = $derived([...new Set(rooms.map((room) => room.schoolYear))]);
 
-  async function createClassroom(event: SubmitEvent) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget as HTMLFormElement);
-    try {
-      const created = await pb.collection("classrooms").create<Classroom>({
-        teacher: session.teacher!.id,
-        name: String(form.get("name")).trim(),
-        schoolYear: String(form.get("schoolYear")).trim(),
-        currencyName: String(form.get("currencyName")).trim() || "Class Bucks",
-        currencySymbol:
-          String(form.get("currencySymbol")).trim().slice(0, 4) || "$",
-        archived: false,
-      });
-      const presets = [
-        { label: "Great choice", amount: 1, sortOrder: 0 },
-        { label: "Helping out", amount: 2, sortOrder: 1 },
-        { label: "Above & beyond", amount: 5, sortOrder: 2 },
-      ];
-      for (const preset of presets)
-        await pb
-          .collection("award_presets")
-          .create({ classroom: created.id, ...preset });
-      await goto(`/app/class/${created.id}`);
-    } catch (problem) {
-      message = readableError(problem, "That classroom could not be created.");
-    }
-  }
-
   async function removeYear(event: SubmitEvent, schoolYear: string) {
     event.preventDefault();
     const form = new FormData(event.currentTarget as HTMLFormElement);
@@ -98,11 +72,16 @@
 
 {#if session.teacher}
   <div class="grid gap-8">
-    <section>
-      <p class="font-bold uppercase tracking-[.18em] text-[#e85d43]">
-        Your classrooms
-      </p>
-      <h1 class="mt-2 text-4xl md:text-6xl">Where are we learning?</h1>
+    <section class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="font-bold uppercase tracking-[.18em] text-[#e85d43]">
+          Your classrooms
+        </p>
+        <h1 class="mt-2 text-4xl md:text-6xl">Where are we learning?</h1>
+      </div>
+      <button class="btn btn-accent" onclick={() => (creating = true)}>
+        Create a classroom
+      </button>
     </section>
 
     {#if message}
@@ -135,33 +114,11 @@
         </article>
       {/each}
       {#if !rooms.some((room) => !room.archived)}
-        <div class="panel p-6">No active classrooms yet. Create one below.</div>
+        <div class="panel p-6">
+          No active classrooms yet. Use “Create a classroom” above.
+        </div>
       {/if}
     </section>
-
-    <details class="panel p-5">
-      <summary class="cursor-pointer text-lg font-bold"
-        >Create a classroom</summary
-      >
-      <form onsubmit={createClassroom} class="mt-5 grid gap-4 md:grid-cols-5">
-        <input class="field" name="name" placeholder="Class name" required />
-        <input
-          class="field"
-          name="schoolYear"
-          placeholder="2026-2027"
-          required
-        />
-        <input class="field" name="currencyName" value="Class Bucks" required />
-        <input
-          class="field"
-          name="currencySymbol"
-          value="$"
-          maxlength="4"
-          required
-        />
-        <button class="btn btn-accent">Create</button>
-      </form>
-    </details>
 
     <details class="panel p-5">
       <summary class="cursor-pointer text-lg font-bold"
@@ -239,4 +196,10 @@
       </div>
     </details>
   </div>
+
+  <NewClassroomDialog
+    bind:open={creating}
+    teacherId={session.teacher.id}
+    onCreated={(classroomId) => goto(`/app/class/${classroomId}`)}
+  />
 {/if}

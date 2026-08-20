@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { postEntry, undoEntry } from "$lib/api";
+  import { MAX_LAST_LETTERS } from "$lib/names";
   import {
     pb,
     readableError,
@@ -76,17 +77,35 @@
 
   function saveName(event: SubmitEvent) {
     event.preventDefault();
-    const name = String(
-      new FormData(event.currentTarget as HTMLFormElement).get("displayName"),
-    ).trim();
+    const values = new FormData(event.currentTarget as HTMLFormElement);
+    const first = String(values.get("firstName")).trim();
+    const last = String(values.get("lastLetters"))
+      .trim()
+      .slice(0, MAX_LAST_LETTERS);
+    if (!first) {
+      message = "Enter a first name.";
+      return;
+    }
     void guard(
       () =>
         pb
           .collection("students")
-          .update(studentId, { displayName: name })
+          .update(studentId, { displayName: last ? `${first} ${last}` : first })
           .then(() => undefined),
       "Name saved.",
     );
+  }
+
+  // Stored names are already "first name plus a few last letters", so the last
+  // space is the split point.
+  function splitStored(displayName: string) {
+    const gap = displayName.lastIndexOf(" ");
+    return gap === -1
+      ? { first: displayName, last: "" }
+      : {
+          first: displayName.slice(0, gap),
+          last: displayName.slice(gap + 1),
+        };
   }
 </script>
 
@@ -98,6 +117,7 @@
   {:else}
     {@const { student, classroom, transactions, card } = screen.state.data}
     {@const total = transactions.reduce((sum, entry) => sum + entry.amount, 0)}
+    {@const stored = splitStored(student.displayName)}
     <div class="grid gap-6">
       {#if message}
         <p
@@ -122,13 +142,25 @@
               >{card ? `#${card.label} · ${card.shortCode}` : "None"}</strong
             >
           </p>
-          <form onsubmit={saveName} class="flex gap-2">
+          <form
+            onsubmit={saveName}
+            class="grid gap-2 sm:grid-cols-[1fr_88px_auto]"
+          >
             <input
               class="field"
-              name="displayName"
-              value={student.displayName}
-              aria-label="Student name"
+              name="firstName"
+              value={stored.first}
+              aria-label="First name"
+              placeholder="First name"
               required
+            />
+            <input
+              class="field"
+              name="lastLetters"
+              value={stored.last}
+              aria-label="Last name letters"
+              placeholder="Ch"
+              maxlength={MAX_LAST_LETTERS}
             />
             <button class="btn btn-soft">Save name</button>
           </form>

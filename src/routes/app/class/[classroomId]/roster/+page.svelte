@@ -1,7 +1,8 @@
 <script lang="ts">
   import { page } from "$app/state";
-  import CsvNames from "$lib/components/CsvNames.svelte";
+  import RosterInput from "$lib/components/RosterInput.svelte";
   import DeleteClassroomButton from "$lib/components/DeleteClassroomButton.svelte";
+  import { MAX_LAST_LETTERS, shortenRoster, splitNames } from "$lib/names";
   import { fetchBalances, removeStudents, resetAssignments } from "$lib/api";
   import {
     pb,
@@ -23,6 +24,7 @@
   let selected = $state<string[]>([]);
   let destinationId = $state("");
   let message = $state("");
+  let roster = $state("");
 
   const screen = createLoader(async () => {
     const id = classroomId;
@@ -83,32 +85,52 @@
     }
   }
 
-  async function addStudents(event: SubmitEvent) {
-    event.preventDefault();
-    const form = event.currentTarget as HTMLFormElement;
-    const names = String(new FormData(form).get("names"))
-      .split(/[,\r\n]+/)
-      .map((name) => name.trim())
-      .filter(Boolean)
-      .slice(0, 200);
-    if (!names.length) {
-      message = "Add at least one name.";
-      return;
-    }
+  // Names already in the class, so a new student never lands on a name that is
+  // impossible to tell apart from someone else's.
+  const takenNames = $derived(
+    (screen.state.data?.rows ?? []).map((student) => student.displayName),
+  );
+  const rosterNames = $derived(shortenRoster(splitNames(roster), takenNames));
+
+  async function saveStudents(names: string[]) {
     await guard(
       async () => {
-        for (const displayName of names) {
+        for (const displayName of names.slice(0, 200))
           await pb.collection("students").create({
             teacher: session.teacher!.id,
             classroom: classroomId,
             displayName,
             active: true,
           });
-        }
-        form.reset();
       },
       `Added ${names.length} student${names.length === 1 ? "" : "s"}.`,
     );
+  }
+
+  async function addStudents(event: SubmitEvent) {
+    event.preventDefault();
+    if (!rosterNames.length) {
+      message = "Add at least one name.";
+      return;
+    }
+    await saveStudents(rosterNames);
+    roster = "";
+  }
+
+  async function addOneStudent(event: SubmitEvent) {
+    event.preventDefault();
+    const form = event.currentTarget as HTMLFormElement;
+    const values = new FormData(form);
+    const first = String(values.get("firstName")).trim();
+    const last = String(values.get("lastLetters"))
+      .trim()
+      .slice(0, MAX_LAST_LETTERS);
+    if (!first) {
+      message = "Enter a first name.";
+      return;
+    }
+    await saveStudents([last ? `${first} ${last}` : first]);
+    form.reset();
   }
 
   async function moveSelected() {
@@ -249,22 +271,42 @@
       </div>
 
       {#if !classroom.archived}
-        <details class="panel p-5">
-          <summary class="font-bold">Bulk add students</summary>
-          <form onsubmit={addStudents} class="mt-4 grid gap-3">
+        <section class="panel p-5">
+          <h2 class="text-lg font-bold">Add a student</h2>
+          <form
+            onsubmit={addOneStudent}
+            class="mt-4 grid gap-3 md:grid-cols-[1fr_160px_auto]"
+          >
             <label class="label">
-              Student names
-              <textarea
-                class="field min-h-36"
-                name="names"
-                placeholder="Avery Johnson, Sam Rivera, Jordan Lee"
+              First name
+              <input
+                class="field"
+                name="firstName"
+                placeholder="Maya"
                 required
-              ></textarea>
+              />
             </label>
-            <p class="text-sm text-slate-600">
-              Separate names with commas or put one name on each line.
-            </p>
-            <CsvNames />
+            <label class="label">
+              Last name letters
+              <input
+                class="field"
+                name="lastLetters"
+                placeholder="Ch"
+                maxlength={MAX_LAST_LETTERS}
+              />
+            </label>
+            <button class="btn btn-accent md:self-end">Add student</button>
+          </form>
+          <p class="mt-2 text-sm text-slate-600">
+            Use one letter unless you need two or three to tell students apart,
+            such as Maya Ch and Maya Ce.
+          </p>
+        </section>
+
+        <details class="panel p-5">
+          <summary class="font-bold">Add several students at once</summary>
+          <form onsubmit={addStudents} class="mt-4 grid gap-3">
+            <RosterInput bind:value={roster} names={rosterNames} />
             <button class="btn btn-accent">Add students</button>
           </form>
         </details>

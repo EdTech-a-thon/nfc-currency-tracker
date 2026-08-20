@@ -12,9 +12,6 @@
   const currentId = $derived(
     page.url.pathname.match(/^\/app\/class\/([^/]+)/)?.[1],
   );
-  const currentClassroom = $derived(
-    classrooms.find((room) => room.id === currentId),
-  );
 
   function logOut() {
     pb.authStore.clear();
@@ -36,34 +33,6 @@
       class="btn btn-soft mr-auto px-3"
       aria-label="View all classes">Home</a
     >
-    {#if currentClassroom}
-      <div
-        class="order-2 w-full rounded-lg bg-[#23312c] px-3 py-2 text-white md:order-none md:w-auto"
-      >
-        <span
-          class="block text-[10px] font-bold uppercase tracking-[.16em] text-[#f9bd72]"
-          >Current class</span
-        >
-        <strong class="block truncate text-base">{currentClassroom.name}</strong
-        >
-      </div>
-    {/if}
-    <nav
-      class="order-3 grid w-full grid-cols-4 gap-1 md:order-none md:flex md:w-auto"
-    >
-      {#if currentId}
-        <a class="btn btn-soft px-2" href="/app/class/{currentId}">Award</a>
-        <a class="btn btn-soft px-2" href="/app/class/{currentId}/roster"
-          >Roster</a
-        >
-        <a class="btn btn-soft px-2" href="/app/class/{currentId}/store"
-          >Store</a
-        >
-        <a class="btn btn-soft px-2" href="/app/class/{currentId}/cards"
-          >Cards</a
-        >
-      {/if}
-    </nav>
     <select
       class="field max-w-40 sm:max-w-52"
       aria-label="Switch active classroom"
