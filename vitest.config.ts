@@ -1,3 +1,7 @@
 import { defineConfig } from "vitest/config";
-import path from "node:path";
-export default defineConfig({ test: { env: { DATABASE_URL: "file:./test.db", SESSION_SECRET: "test-secret-at-least-thirty-two-characters" }, fileParallelism: false }, resolve: { alias: { "@": path.resolve(__dirname) } } });
+
+// The tests talk to a running PocketBase rather than to the app, so they need
+// none of the SvelteKit plugin machinery.
+export default defineConfig({
+  test: { fileParallelism: false, testTimeout: 30000 },
+});

@@ -1,7 +1,9 @@
 .git
-.next
+.svelte-kit
+.next-dev
+build
 node_modules
 .env*
-backups
-*.db
+pb_data
+pocketbase
 npm-debug.log
